@@ -33,8 +33,9 @@ public class EmailUtils {
 	private static final String TEXT_PLAIN = "text/plain";
 	private static final String TEXT_HTML = "text/html";
 	private static final String LINE_FEED = "\r\n";
+	private static final String LINE_FEED_REGEX = "\\R";
 
-	public static String getContent(Message message) throws MessagingException, IOException {
+	public static String getContent(Message message) throws IOException, MessagingException {
 		Set<String> stringParts = new LinkedHashSet<>();
 
 		getContentFromPart(stringParts, message);
@@ -51,22 +52,34 @@ public class EmailUtils {
 		return sb.toString();
 	}
 
-	private static void getContentFromPart(Set<String> stringParts, Part part) throws MessagingException, IOException {
+	private static void getContentFromPart(Set<String> stringParts, Part part) throws IOException, MessagingException {
 		Object content = part.getContent();
 
 		if (part.isMimeType(TEXT_PLAIN)) {
-			stringParts.add(String.valueOf(content).concat(LINE_FEED));
+			String contentStr = String.valueOf(content);
+			removeLastLineFeeds(contentStr);
+			stringParts.add(contentStr);
 
 		} else if (part.isMimeType(TEXT_HTML)) {
-			getContentFromHtmlPart(stringParts, content);
+			String contentStr = getContentFromHtmlPart(part);
+			stringParts.add(contentStr);
 
 		} else if (content instanceof Multipart) {
 			getContentFromMultipart(stringParts, (Multipart) content);
 		}
 	}
 
-	private static void getContentFromHtmlPart(Set<String> stringParts, Object content) {
-		Document jsoupDoc = Jsoup.parse(String.valueOf(content));
+	private static String removeLastLineFeeds(String contentStr) {
+		while (contentStr.endsWith(LINE_FEED)) {
+			contentStr = StringUtils.chomp(contentStr);
+		}
+		return contentStr;
+	}
+
+	private static String getContentFromHtmlPart(Part part) throws IOException, MessagingException {
+		Object content = part.getContent();
+		String contentStr = String.valueOf(content).replaceAll(LINE_FEED_REGEX, "");
+		Document jsoupDoc = Jsoup.parse(contentStr);
 
 		OutputSettings outputSettings = new OutputSettings();
 		outputSettings.prettyPrint(false);
@@ -75,11 +88,10 @@ public class EmailUtils {
 		jsoupDoc.select("p").before("\\r\\n");
 
 		String newStr = jsoupDoc.html().replaceAll("\\\\r\\\\n", LINE_FEED);
-		String prettyContent = Jsoup.clean(newStr, StringUtils.EMPTY, Whitelist.none(), outputSettings);
-		stringParts.add(String.valueOf(prettyContent));
+		return Jsoup.clean(newStr, StringUtils.EMPTY, Whitelist.none(), outputSettings);
 	}
 
-	private static void getContentFromMultipart(Set<String> stringParts, Multipart multipart) throws MessagingException, IOException {
+	private static void getContentFromMultipart(Set<String> stringParts, Multipart multipart) throws IOException, MessagingException {
 		int count = multipart.getCount();
 
 		for (int i = 0; i < count; i++) {
@@ -88,7 +100,7 @@ public class EmailUtils {
 		}
 	}
 
-	public static Map<String, InputStream> getAttachments(Message message) throws MessagingException, IOException {
+	public static Map<String, InputStream> getAttachments(Message message) throws IOException, MessagingException {
 		Map<String, InputStream> attachments = new LinkedHashMap<>();
 
 		getAttachmentsFromPart(attachments, message);
@@ -96,7 +108,7 @@ public class EmailUtils {
 		return attachments;
 	}
 
-	private static void getAttachmentsFromMultipart(Map<String, InputStream> attachments, Multipart multipart) throws MessagingException, IOException {
+	private static void getAttachmentsFromMultipart(Map<String, InputStream> attachments, Multipart multipart) throws IOException, MessagingException {
 		int count = multipart.getCount();
 
 		for (int i = 0; i < count; i++) {

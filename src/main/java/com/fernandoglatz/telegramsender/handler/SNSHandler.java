@@ -3,6 +3,7 @@
  */
 package com.fernandoglatz.telegramsender.handler;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -15,6 +16,7 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.amazonaws.services.lambda.runtime.Context;
@@ -84,6 +86,12 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		return "Executed";
 	}
 
+	public static void main(String[] args) throws Exception {
+		FileInputStream inputStream = new FileInputStream("/tmp/l2hu4p32ukj3vqc78f1n97h0lh6gaebqnfu6sk01");
+		SNSHandler handler = new SNSHandler();
+		handler.processEmail(inputStream);
+	}
+
 	private void processEmail(InputStream inputStream) throws MessagingException, IOException {
 		Map<String, String> env = System.getenv();
 		String botToken = env.get(BOT_TOKEN);
@@ -144,8 +152,9 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 
 		TelegramResponseDTO dtoResponse = telegramApi.sendMessage(dto);
 		Boolean completed = dtoResponse.getCompleted();
+		String responseMessage = dtoResponse.getMessage();
 
-		logInfo("Telegram response: " + completed);
+		logInfo("Telegram response: " + ObjectUtils.firstNonNull(responseMessage, completed));
 	}
 
 	private void sendPhoto(TelegramApi telegramApi, String id, String fileName, InputStream fileInputStream) throws IOException {
@@ -162,7 +171,8 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 
 		TelegramResponseDTO dtoResponse = telegramApi.sendPhoto(dto);
 		Boolean completed = dtoResponse.getCompleted();
+		String responseMessage = dtoResponse.getMessage();
 
-		logInfo("Telegram response: " + completed);
+		logInfo("Telegram response: " + ObjectUtils.firstNonNull(responseMessage, completed));
 	}
 }

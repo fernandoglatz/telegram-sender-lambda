@@ -43,29 +43,33 @@ public class MultipartBuilder {
 	}
 
 	public MultipartBuilder addFile(String name, String fileName, String mediaType, InputStream inputStream) throws IOException {
-		getWriter().append("--" + boundary).append(LINE_FEED);
-		getWriter().append("Content-Disposition: form-data; name=\"").append(name + "\"; filename=\"").append(fileName).append("\"").append(LINE_FEED);
-		getWriter().append("Content-Type: ").append(mediaType).append(LINE_FEED);
-		getWriter().append("Content-Transfer-Encoding: binary").append(LINE_FEED).append(LINE_FEED);
-		getWriter().flush();
+		if (inputStream != null) {
+			getWriter().append("--" + boundary).append(LINE_FEED);
+			getWriter().append("Content-Disposition: form-data; name=\"").append(name + "\"; filename=\"").append(fileName).append("\"").append(LINE_FEED);
+			getWriter().append("Content-Type: ").append(mediaType).append(LINE_FEED);
+			getWriter().append("Content-Transfer-Encoding: binary").append(LINE_FEED).append(LINE_FEED);
+			getWriter().flush();
 
-		IOUtils.copy(inputStream, getOutputStream());
+			IOUtils.copy(inputStream, getOutputStream());
 
-		getWriter().append(LINE_FEED);
-		getWriter().flush();
+			getWriter().append(LINE_FEED);
+			getWriter().flush();
+		}
 
 		return this;
 	}
 
 	public MultipartBuilder addText(String name, String text) {
-		getWriter().append("--" + boundary).append(LINE_FEED);
-		getWriter().append("Content-Disposition: form-data; name=\"").append(name).append("\"").append(LINE_FEED);
-		getWriter().append("Content-Type: text/plain; charset=").append(StandardCharsets.UTF_8.name()).append(LINE_FEED).append(LINE_FEED);
+		if (text != null) {
+			getWriter().append("--" + boundary).append(LINE_FEED);
+			getWriter().append("Content-Disposition: form-data; name=\"").append(name).append("\"").append(LINE_FEED);
+			getWriter().append("Content-Type: text/plain; charset=").append(StandardCharsets.UTF_8.name()).append(LINE_FEED).append(LINE_FEED);
 
-		getWriter().append(text);
+			getWriter().append(text);
 
-		getWriter().append(LINE_FEED);
-		getWriter().flush();
+			getWriter().append(LINE_FEED);
+			getWriter().flush();
+		}
 
 		return this;
 	}

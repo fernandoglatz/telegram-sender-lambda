@@ -32,8 +32,21 @@ public class TelegramApi {
 	private static final String APPLICATION_JSON = "application/json";
 
 	private static final Integer CONNECTION_TIMEOUT = 600000; //10 minutes
+	private static final Integer MESSAGE_LENGTH_LIMIT = 4096;
+	private static final Integer PHOTO_MESSAGE_LENGTH_LIMIT = 200;
 
-	private static final String PARSE_MODE_DEFAULT = "MarkdownV2";
+	private static final Integer START_HTTP_2XX = 200;
+	private static final Integer START_HTTP_3XX = 300;
+	private static final Integer END_HTTP_3XX = 399;
+
+	private static final String DOT = ".";
+	private static final String ESCAPE_DOT = "\\.";
+	private static final String LEFT_BRACKET = "(";
+	private static final String ESCAPE_LEFT_BRACKET = "\\(";
+	private static final String RIGHT_BRACKET = ")";
+	private static final String ESCAPE_RIGHT_BRACKET = "\\)";
+
+	private static final String PARSE_MODE_MARKDOWN_V2 = "MarkdownV2";
 	private static final String TELEGRAM_BOT_URL = "https://api.telegram.org/bot";
 
 	private static final String SEND_MESSAGE = "/sendMessage";
@@ -47,6 +60,8 @@ public class TelegramApi {
 
 	public TelegramResponseDTO sendMessage(SendMessageDTO dto) throws IOException {
 		setParseMode(dto);
+		escapeMessage(dto);
+		truncateMessage(dto, MESSAGE_LENGTH_LIMIT);
 
 		Gson gson = new Gson();
 		String json = gson.toJson(dto);
@@ -56,20 +71,17 @@ public class TelegramApi {
 	}
 
 	public TelegramResponseDTO sendPhoto(SendPhotoDTO dto) throws IOException {
-		setParseMode(dto);
+		escapeMessage(dto);
+		truncateMessage(dto, PHOTO_MESSAGE_LENGTH_LIMIT);
 
 		Gson gson = new Gson();
 		String jsonResponse = null;
 		InputStream inputStream = dto.getInputStream();
-		String message = dto.getMessage();
 
 		if (inputStream != null) {
-
 			MultipartBuilder builder = new MultipartBuilder();
 			builder.addText("chat_id", dto.getChatId());
-			if (StringUtils.isNotEmpty(message)) {
-				builder.addText("caption", message);
-			}
+			builder.addText("caption", dto.getMessage());
 			builder.addText("parse_mode", dto.getParseMode());
 			builder.addText("disable_notification", String.valueOf(dto.getDisableNotification()));
 			builder.addText("reply_to_message_id", String.valueOf(dto.getReplyToMessageId()));
@@ -85,8 +97,30 @@ public class TelegramApi {
 	}
 
 	private void setParseMode(ITextDTO dto) {
-		if (StringUtils.isEmpty(dto.getParseMode())) {
-			dto.setParseMode(PARSE_MODE_DEFAULT);
+		String parseMode = dto.getParseMode();
+
+		if (StringUtils.isEmpty(parseMode)) {
+			dto.setParseMode(PARSE_MODE_MARKDOWN_V2);
+		}
+	}
+
+	private void escapeMessage(ITextDTO dto) {
+		String parseMode = dto.getParseMode();
+		String message = dto.getMessage();
+
+		if (PARSE_MODE_MARKDOWN_V2.equals(parseMode) && StringUtils.isNotEmpty(message)) {
+			String newMessage = message.replace(DOT, ESCAPE_DOT);
+			newMessage = newMessage.replace(LEFT_BRACKET, ESCAPE_LEFT_BRACKET);
+			newMessage = newMessage.replace(RIGHT_BRACKET, ESCAPE_RIGHT_BRACKET);
+			dto.setMessage(newMessage);
+		}
+	}
+
+	private void truncateMessage(ITextDTO dto, Integer length) {
+		String message = dto.getMessage();
+		if (StringUtils.isNotEmpty(message)) {
+			String newMessage = StringUtils.truncate(message, length);
+			dto.setMessage(newMessage);
 		}
 	}
 
@@ -127,8 +161,20 @@ public class TelegramApi {
 				outputStream.flush();
 			}
 
-			try (InputStream inputStream = connection.getInputStream()) {
-				response = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+			Integer responseCode = connection.getResponseCode();
+
+			if (responseCode >= START_HTTP_2XX && responseCode <= END_HTTP_3XX) {
+				try (InputStream inputStream = connection.getInputStream()) {
+					response = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+				}
+			} else {
+				try (InputStream inputStream = connection.getErrorStream()) {
+					response = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+				}
+			}
+
+			if (responseCode >= START_HTTP_3XX && responseCode <= END_HTTP_3XX) {
+				response = sendRequest(response, body, contentType); //redirect
 			}
 		} finally {
 			if (connection != null) {
