@@ -3,7 +3,6 @@
  */
 package com.fernandoglatz.telegramsender.handler;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -48,6 +47,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 	private static final String PARSE_MODE = "parse_mode";
 	private static final String SUBJECT = "subject";
 	private static final String CONTENT = "content";
+	private static final String CONTENT_IGNORE_MESSAGE = "content_ignore_message";
 	private static final String MESSAGE = "message";
 	private static final String SEPARATOR = ";";
 
@@ -86,12 +86,6 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		return "Executed";
 	}
 
-	public static void main(String[] args) throws Exception {
-		FileInputStream inputStream = new FileInputStream("/tmp/l2hu4p32ukj3vqc78f1n97h0lh6gaebqnfu6sk01");
-		SNSHandler handler = new SNSHandler();
-		handler.processEmail(inputStream);
-	}
-
 	private void processEmail(InputStream inputStream) throws MessagingException, IOException {
 		Map<String, String> env = System.getenv();
 		String botToken = env.get(BOT_TOKEN);
@@ -99,8 +93,10 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		String parseMode = env.get(PARSE_MODE);
 		String subject = env.get(SUBJECT);
 		String content = env.get(CONTENT);
+		String contentIgnoreMessage = env.get(CONTENT_IGNORE_MESSAGE);
 		String message = env.get(MESSAGE);
 		String[] chatIds = StringUtils.trimToEmpty(chatId).split(SEPARATOR);
+		String[] contentsIgnoreMessage = StringUtils.trimToEmpty(contentIgnoreMessage).split(SEPARATOR);
 
 		MimeMessage mimeMessage = new MimeMessage(null, inputStream);
 		String emailSubject = mimeMessage.getSubject();
@@ -123,7 +119,16 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 
 			try {
 				for (String id : chatIds) {
-					sendMessage(telegramApi, id, message, parseMode);
+					boolean contentIgnoreMatch = false;
+
+					for (String contentIgnore : contentsIgnoreMessage) {
+						contentIgnoreMatch |= StringUtils.containsIgnoreCase(emailContent, contentIgnore);
+					}
+
+					if (!contentIgnoreMatch) {
+						sendMessage(telegramApi, id, message, parseMode);
+					}
+
 					for (Entry<String, InputStream> entry : entries) {
 						String fileName = entry.getKey();
 						InputStream fileInputStream = entry.getValue();
