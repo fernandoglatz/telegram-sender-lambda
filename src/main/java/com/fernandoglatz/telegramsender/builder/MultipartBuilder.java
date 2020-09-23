@@ -51,6 +51,7 @@ public class MultipartBuilder {
 			getWriter().flush();
 
 			IOUtils.copy(inputStream, getOutputStream());
+			getOutputStream().flush();
 
 			getWriter().append(LINE_FEED);
 			getWriter().flush();

@@ -126,6 +126,7 @@ public class EmailUtils {
 			try (InputStream inputStream = part.getInputStream(); //
 					ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 				IOUtils.copy(inputStream, outputStream);
+				outputStream.flush();
 				byte[] bytes = outputStream.toByteArray();
 				InputStream newInputStream = new ByteArrayInputStream(bytes);
 

@@ -102,7 +102,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		String emailSubject = mimeMessage.getSubject();
 		String emailContent = EmailUtils.getContent(mimeMessage);
 
-		logInfo("Subject: " + subject);
+		logInfo("Subject: " + emailSubject);
 		//logInfo("Content: " + emailContent);
 
 		if (StringUtils.isEmpty(message)) {
@@ -121,8 +121,10 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 				for (String id : chatIds) {
 					boolean contentIgnoreMatch = false;
 
-					for (String contentIgnore : contentsIgnoreMessage) {
-						contentIgnoreMatch |= StringUtils.containsIgnoreCase(emailContent, contentIgnore);
+					if (StringUtils.isNotEmpty(contentIgnoreMessage)) {
+						for (String contentIgnore : contentsIgnoreMessage) {
+							contentIgnoreMatch |= StringUtils.containsIgnoreCase(emailContent, contentIgnore);
+						}
 					}
 
 					if (!contentIgnoreMatch) {
