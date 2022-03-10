@@ -3,29 +3,29 @@
  */
 package com.fernandoglatz.telegramsender.dto;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @author fernandoglatz
  */
 public class SendMessageDTO implements ITextDTO {
 
-	@SerializedName("chat_id")
+	@JsonProperty("chat_id")
 	private String chatId;
 
-	@SerializedName("text")
+	@JsonProperty("text")
 	private String message;
 
-	@SerializedName("parse_mode")
+	@JsonProperty("parse_mode")
 	private String parseMode;
 
-	@SerializedName("disable_web_page_preview")
+	@JsonProperty("disable_web_page_preview")
 	private Boolean disableWebPagePreview = false;
 
-	@SerializedName("disable_notification")
+	@JsonProperty("disable_notification")
 	private Boolean disableNotification = false;
 
-	@SerializedName("reply_to_message_id")
+	@JsonProperty("reply_to_message_id")
 	private Integer replyToMessageId;
 
 	public String getChatId() {

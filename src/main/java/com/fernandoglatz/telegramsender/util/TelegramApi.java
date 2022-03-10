@@ -13,12 +13,12 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fernandoglatz.telegramsender.builder.MultipartBuilder;
 import com.fernandoglatz.telegramsender.dto.ITextDTO;
 import com.fernandoglatz.telegramsender.dto.SendMessageDTO;
 import com.fernandoglatz.telegramsender.dto.SendPhotoDTO;
 import com.fernandoglatz.telegramsender.dto.TelegramResponseDTO;
-import com.google.gson.Gson;
 
 /**
  * @author fernandoglatz
@@ -39,12 +39,11 @@ public class TelegramApi {
 	private static final Integer START_HTTP_3XX = 300;
 	private static final Integer END_HTTP_3XX = 399;
 
+	private static final String ESCAPE = "\\";
 	private static final String DOT = ".";
-	private static final String ESCAPE_DOT = "\\.";
+	private static final String HYPHEN = "-";
 	private static final String LEFT_BRACKET = "(";
-	private static final String ESCAPE_LEFT_BRACKET = "\\(";
 	private static final String RIGHT_BRACKET = ")";
-	private static final String ESCAPE_RIGHT_BRACKET = "\\)";
 
 	private static final String PARSE_MODE_MARKDOWN_V2 = "MarkdownV2";
 	private static final String TELEGRAM_BOT_URL = "https://api.telegram.org/bot";
@@ -63,19 +62,19 @@ public class TelegramApi {
 		escapeMessage(dto);
 		truncateMessage(dto, MESSAGE_LENGTH_LIMIT);
 
-		Gson gson = new Gson();
-		String json = gson.toJson(dto);
+		ObjectMapper objectMapper = JsonUtils.getMapper();
+		String json = objectMapper.writeValueAsString(dto);
 		String jsonResponse = sendRequest(TELEGRAM_BOT_URL + getBotToken() + SEND_MESSAGE, json);
 
-		return gson.fromJson(jsonResponse, TelegramResponseDTO.class);
+		return objectMapper.readValue(jsonResponse, TelegramResponseDTO.class);
 	}
 
 	public TelegramResponseDTO sendPhoto(SendPhotoDTO dto) throws IOException {
 		escapeMessage(dto);
 		truncateMessage(dto, PHOTO_MESSAGE_LENGTH_LIMIT);
 
-		Gson gson = new Gson();
 		String jsonResponse = null;
+		ObjectMapper objectMapper = JsonUtils.getMapper();
 		InputStream inputStream = dto.getInputStream();
 
 		if (inputStream != null) {
@@ -89,11 +88,11 @@ public class TelegramApi {
 
 			jsonResponse = sendRequest(TELEGRAM_BOT_URL + getBotToken() + SEND_PHOTO, builder);
 		} else {
-			String json = gson.toJson(dto);
+			String json = objectMapper.writeValueAsString(dto);
 			jsonResponse = sendRequest(TELEGRAM_BOT_URL + getBotToken() + SEND_PHOTO, json);
 		}
 
-		return gson.fromJson(jsonResponse, TelegramResponseDTO.class);
+		return objectMapper.readValue(jsonResponse, TelegramResponseDTO.class);
 	}
 
 	private void setParseMode(ITextDTO dto) {
@@ -109,9 +108,10 @@ public class TelegramApi {
 		String message = dto.getMessage();
 
 		if (PARSE_MODE_MARKDOWN_V2.equals(parseMode) && StringUtils.isNotEmpty(message)) {
-			String newMessage = message.replace(DOT, ESCAPE_DOT);
-			newMessage = newMessage.replace(LEFT_BRACKET, ESCAPE_LEFT_BRACKET);
-			newMessage = newMessage.replace(RIGHT_BRACKET, ESCAPE_RIGHT_BRACKET);
+			String newMessage = message.replace(DOT, ESCAPE + DOT);
+			newMessage = newMessage.replace(LEFT_BRACKET, ESCAPE + LEFT_BRACKET);
+			newMessage = newMessage.replace(RIGHT_BRACKET, ESCAPE + RIGHT_BRACKET);
+			newMessage = newMessage.replace(HYPHEN, ESCAPE + HYPHEN);
 			dto.setMessage(newMessage);
 		}
 	}

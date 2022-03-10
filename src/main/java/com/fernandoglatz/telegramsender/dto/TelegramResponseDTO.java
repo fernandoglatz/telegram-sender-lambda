@@ -3,17 +3,17 @@
  */
 package com.fernandoglatz.telegramsender.dto;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @author fernandoglatz
  */
 public class TelegramResponseDTO {
 
-	@SerializedName("ok")
+	@JsonProperty("ok")
 	private Boolean completed;
 
-	@SerializedName("description")
+	@JsonProperty("description")
 	private String message;
 
 	public Boolean getCompleted() {

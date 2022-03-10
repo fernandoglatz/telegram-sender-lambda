@@ -5,29 +5,29 @@ package com.fernandoglatz.telegramsender.dto;
 
 import java.io.InputStream;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @author fernandoglatz
  */
 public class SendPhotoDTO implements ITextDTO {
 
-	@SerializedName("chat_id")
+	@JsonProperty("chat_id")
 	private String chatId;
 
-	@SerializedName("photo")
+	@JsonProperty("photo")
 	private String photo;
 
-	@SerializedName("caption")
+	@JsonProperty("caption")
 	private String message;
 
-	@SerializedName("parse_mode")
+	@JsonProperty("parse_mode")
 	private String parseMode;
 
-	@SerializedName("disable_notification")
+	@JsonProperty("disable_notification")
 	private Boolean disableNotification = false;
 
-	@SerializedName("reply_to_message_id")
+	@JsonProperty("reply_to_message_id")
 	private Integer replyToMessageId;
 
 	private transient InputStream inputStream;
