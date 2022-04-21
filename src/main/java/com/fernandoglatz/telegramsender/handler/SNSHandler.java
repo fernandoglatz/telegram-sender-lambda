@@ -13,6 +13,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.mail.Address;
+import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
@@ -51,6 +52,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 	private static final String PARSE_MODE = "parse_mode";
 	private static final String SUBJECT = "subject";
 	private static final String FROM = "from";
+	private static final String TO = "to";
 	private static final String CONTENT = "content";
 	private static final String CONTENT_IGNORE_MESSAGE = "content_ignore_message";
 	private static final String MESSAGE = "message";
@@ -102,10 +104,12 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		String parseMode = env.get(PARSE_MODE);
 		String subject = env.get(SUBJECT);
 		String from = env.get(FROM);
+		String to = env.get(TO);
 		String content = env.get(CONTENT);
 		String contentIgnoreMessage = env.get(CONTENT_IGNORE_MESSAGE);
 		String message = env.get(MESSAGE);
 		List<String> froms = Arrays.asList(StringUtils.trimToEmpty(from).split(SEPARATOR));
+		List<String> tos = Arrays.asList(StringUtils.trimToEmpty(to).split(SEPARATOR));
 		List<String> subjects = Arrays.asList(StringUtils.trimToEmpty(subject).split(SEPARATOR));
 		List<String> chatIds = Arrays.asList(StringUtils.trimToEmpty(chatId).split(SEPARATOR));
 		List<String> contentsIgnoreMessage = Arrays.asList(StringUtils.trimToEmpty(contentIgnoreMessage).split(SEPARATOR));
@@ -114,9 +118,9 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		String emailSubject = mimeMessage.getSubject();
 		String emailContent = EmailUtils.getContent(mimeMessage).trim();
 		String emailFrom = getFrom(mimeMessage);
+		String emailTo = getTo(mimeMessage);
 
-		logInfo("From: " + emailFrom + ", Subject: " + emailSubject);
-		//logInfo("Content: " + emailContent);
+		logInfo("From: " + emailFrom + ", To: " + emailFrom + ", Subject: " + emailSubject);
 
 		if (StringUtils.isEmpty(message)) {
 			if (StringUtils.isNotEmpty(emailContent)) {
@@ -126,11 +130,12 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 			}
 		}
 
-		boolean fromMatch = StringUtils.isNotEmpty(emailFrom) ? froms.stream().anyMatch(f -> StringUtils.containsIgnoreCase(emailFrom, f)) : true;
-		boolean subjectMatch = StringUtils.isNotEmpty(emailSubject) ? subjects.stream().anyMatch(s -> StringUtils.containsIgnoreCase(emailSubject, s)) : true;
-		boolean contentMatch = StringUtils.isNotEmpty(content) ? StringUtils.containsIgnoreCase(emailContent, content) : true;
+		boolean fromMatch = StringUtils.isEmpty(emailFrom) || froms.stream().anyMatch(f -> StringUtils.contains(emailFrom, f));
+		boolean tosMatch = StringUtils.isEmpty(emailTo) || tos.stream().anyMatch(t -> StringUtils.contains(emailTo, t));
+		boolean subjectMatch = StringUtils.isEmpty(emailSubject) || subjects.stream().anyMatch(s -> StringUtils.contains(emailSubject, s));
+		boolean contentMatch = StringUtils.isEmpty(content) || StringUtils.contains(emailContent, content);
 
-		if (fromMatch && subjectMatch && contentMatch) {
+		if (fromMatch && tosMatch && subjectMatch && contentMatch) {
 			TelegramApi telegramApi = new TelegramApi(botToken);
 			Map<String, InputStream> attachments = EmailUtils.getAttachments(mimeMessage);
 			Set<Entry<String, InputStream>> entries = attachments.entrySet();
@@ -140,7 +145,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 					boolean contentIgnoreMatch = false;
 
 					if (StringUtils.isNotEmpty(contentIgnoreMessage)) {
-						contentIgnoreMatch = contentsIgnoreMessage.stream().anyMatch(cim -> StringUtils.containsIgnoreCase(emailContent, cim));
+						contentIgnoreMatch = contentsIgnoreMessage.stream().anyMatch(cim -> StringUtils.contains(emailContent, cim));
 					}
 
 					if (!contentIgnoreMatch) {
@@ -166,16 +171,23 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 	}
 
 	private String getFrom(MimeMessage mimeMessage) throws MessagingException {
-		String fromName = null;
+		String from = null;
 		Address fromAddress = mimeMessage.getFrom()[NumberUtils.INTEGER_ZERO];
 		if (fromAddress instanceof InternetAddress) {
 			InternetAddress fromInet = (InternetAddress) fromAddress;
-			fromName = fromInet.getPersonal();
-			if (StringUtils.isEmpty(fromName)) {
-				fromName = fromInet.getAddress();
-			}
+			from = fromInet.getAddress();
 		}
-		return fromName;
+		return from;
+	}
+
+	private String getTo(MimeMessage mimeMessage) throws MessagingException {
+		String to = null;
+		Address toAddress = mimeMessage.getRecipients(Message.RecipientType.TO)[NumberUtils.INTEGER_ZERO];
+		if (toAddress instanceof InternetAddress) {
+			InternetAddress toInet = (InternetAddress) toAddress;
+			to = toInet.getAddress();
+		}
+		return to;
 	}
 
 	private void sendMessage(TelegramApi telegramApi, String id, String from, String message, String parseMode) throws IOException {
