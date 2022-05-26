@@ -58,6 +58,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 	private static final String MESSAGE = "message";
 	private static final String SEPARATOR = ";";
 	private static final String BREAK_LINE = "\r\n";
+	private static final String ASTERISK = "*";
 
 	@Override
 	public String handleRequest(SNSEvent event, Context context) {
@@ -66,8 +67,8 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 
 		try {
 			List<SNSRecord> records = event.getRecords();
-			for (SNSRecord record : records) {
-				SNS sns = record.getSNS();
+			for (SNSRecord snsRecord : records) {
+				SNS sns = snsRecord.getSNS();
 				String message = sns.getMessage();
 
 				S3EventNotification s3Event = S3EventNotification.parseJson(message);
@@ -120,7 +121,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		String emailFrom = getFrom(mimeMessage);
 		String emailTo = getTo(mimeMessage);
 
-		logInfo("From: " + emailFrom + ", To: " + emailFrom + ", Subject: " + emailSubject);
+		logInfo("From: " + emailFrom + ", To: " + emailTo + ", Subject: " + emailSubject);
 
 		if (StringUtils.isEmpty(message)) {
 			if (StringUtils.isNotEmpty(emailContent)) {
@@ -149,7 +150,7 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 					}
 
 					if (!contentIgnoreMatch) {
-						sendMessage(telegramApi, id, emailFrom, message, parseMode);
+						sendMessage(telegramApi, id, emailTo, message, parseMode);
 					}
 
 					for (Entry<String, InputStream> entry : entries) {
@@ -190,9 +191,15 @@ public class SNSHandler extends AbstractRequestHandler<SNSEvent, String> {
 		return to;
 	}
 
-	private void sendMessage(TelegramApi telegramApi, String id, String from, String message, String parseMode) throws IOException {
-		if (StringUtils.isNotEmpty(from)) {
-			message = from + BREAK_LINE + message;
+	private void sendMessage(TelegramApi telegramApi, String id, String to, String message, String parseMode) throws IOException {
+		if (StringUtils.isNotEmpty(to)) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(ASTERISK);
+			sb.append(to);
+			sb.append(ASTERISK);
+			sb.append(BREAK_LINE);
+			sb.append(message);
+			message = sb.toString();
 		}
 
 		SendMessageDTO dto = new SendMessageDTO();
